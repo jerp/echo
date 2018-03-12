@@ -16,17 +16,30 @@
     function timeStamp() {
       return (new Date()).toLocaleTimeString('fr-FR')
     }
+    function applyStyle(el, style) {
+      if (style) {
+        for (const name in style) {
+          if (el.style.hasOwnProperty(name)) {
+            el.style[name] = style[name]          
+          }
+        }
+      }
+    }
+    function createPre(innerText, parentEl, style) {
+      var preEl = document.createElement('PRE')
+      applyStyle(preEl, style)
+      preEl.innerText = innerText
+      parentEl.appendChild(preEl)
+    }
     function addToDom(req) {
-      var el = document.createElement('div')
-      el.innerHTML = '<pre style="color: lightgrey;">' + timeStamp() + ' - ' + at()  + '</pre>' +
-        '<pre>' +
-          req.method + ' ' + req.url +
-        '</pre><pre>' +
-          Object.keys(req.headers).map(n => n+':'+req.headers[n]).join('\n') +
-        (req.body ? '</pre><pre>' +
-          req.safeBody : '') +
-        '</pre>'
-      document.body.insertBefore(el, document.body.firstElementChild)
+      var parentEl = document.createElement('div')
+      createPre(timeStamp() + ' - ' + at(), parentEl, {color: 'lightgrey'})
+      createPre(req.method + ' ' + req.url, parentEl)
+      createPre(Object.keys(req.headers).map(n => n+':'+req.headers[n]).join('\n'), parentEl)
+      if (req.body != null) {
+        createPre(req.safeBody, parentEl)
+      }
+      document.body.insertBefore(parentEl, document.body.firstElementChild)
     }
     document.body.firstElementChild.innerText = timeStamp() + ' - start'
     var socket = new WebSocket(location.protocol.replace('http', 'ws')+ '//' + location.host + '/ws')
@@ -38,7 +51,7 @@
           window.echos.last = Object.create(null, Object.assign(Object.getOwnPropertyDescriptors(resp), {
             safeBody: {
               get() {
-                var maxLength = 1024 * 10
+                var maxLength = 1024
                 if (resp.body && resp.body.length > maxLength) {
                   return resp.body.slice(0, maxLength) + '...'
                 } else {
