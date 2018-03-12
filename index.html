@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>Echo</title>
+</head>
+<body>
+  <pre style="color: lightgrey;">-</pre>
+  <script>
+    function addToDom(req) {
+      var el = document.createElement('div')
+      el.innerHTML = '<pre style="color: lightgrey;">' + (new Date()).toLocaleTimeString('fr-FR')  + '</pre>' +
+        '<pre>' +
+          req.method + ' ' + req.url +
+        '</pre><pre>' +
+          Object.keys(req.headers).map(n => n+':'+req.headers[n]).join('\n') +
+        '</pre><pre>' +
+          req.body.slice(0, 1024 * 10) +
+        '</pre>'
+      document.body.insertBefore(el, document.body.firstChild)
+    }
+    var socket = new WebSocket(location.protocol.replace('http', 'ws')+ '//' + location.host + '/ws')
+    window.echos = []
+    socket.onmessage = function(m) {
+      if (m.data) {
+        try {
+          window.echos.last = JSON.parse(m.data)
+          window.echos.push(window.echos.last)
+          addToDom(window.echos.last)
+        } catch (e) {
+          console.log(m.data)
+        }
+      }
+    }
+  </script>
+</body>
+</html>
