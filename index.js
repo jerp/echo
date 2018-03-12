@@ -10,7 +10,7 @@ const port = process.env.PORT || 8088
 var wss
 
 function consoleLog() {
-  console.log.apply(console, arguments)
+  // console.log.apply(console, arguments)
 }
 
 function broadcast(req, body, cb) {
