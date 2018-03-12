@@ -2,4 +2,4 @@
 npm start
 
 # load large data
-curl -X POST -H "Content-Type:text/plain"  -d @ClojurefortheBraveandTrue.epub http://localho:8088
+curl -X POST -H "Content-Type:text/plain"  -d @ClojurefortheBraveandTrue.epub http://localhost:8088

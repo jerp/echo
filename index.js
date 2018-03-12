@@ -2,65 +2,60 @@ const http = require('http')
 const express = require('express');
 const WebSocket = require('ws');
 const fs = require('fs')
-const indexHtml = fs.readFileSync(__dirname+'/index.html').toString()
+const indexHtml = fs.readFileSync(__dirname + '/index.html').toString()
 
 const port = process.env.PORT || 8088
-const app = express();
+// const app = express();
 
 var wss
 
-function consoleLog () {
+function consoleLog() {
   console.log.apply(console, arguments)
 }
 
-function broadcast(req, body) {
+function broadcast(req, body, cb) {
   consoleLog('broadcast', body && body.length)
   wss.clients.forEach(function each(client) {
     if (client.readyState === WebSocket.OPEN) {
-      client.send(JSON.stringify({
+      var payload = {
         method: req.method,
         url: req.url,
         headers: req.headers,
         body: body && Array.isArray(body) ? Buffer.concat(body).toString() : body
-      }));
+      }
+      if (body != null) {
+        payload.body = Array.isArray(body) ? Buffer.concat(body).toString() : body
+      }
+      client.send(JSON.stringify(payload));
     }
   })
+  if (cb) { cb(); }
 }
 
-const server = http.createServer(app)
-app.use((req, res) => {
+function onRequest(req, res) {
   if (req.url === '/ws') {
-    const body = http.STATUS_CODES[426];
+    const msg = http.STATUS_CODES[426];
     res.writeHead(426, {
-      'Content-Length': body.length,
+      'Content-Length': msg.length,
       'Content-Type': 'text/plain'
     });
-    res.end(body);
+    res.end(msg);
   } else if (req.url === '/i') {
-    const body = indexHtml.replace(/\{PORT\}/g, port) //http.STATUS_CODES[200];
+    const msg = indexHtml.replace(/\{PORT\}/g, port) //http.STATUS_CODES[200];
     res.writeHead(200, {
-      'Content-Length': body.length,
+      'Content-Length': msg.length,
       'Content-Type': 'text/html'
     });
-    res.end(body);
+    res.end(msg);
   } else {
-    // was this a conditional request?
-    if (req.checkContinue === true) {
-      req.checkContinue = false;
-      broadcast(req, 'pending...')
-      // send 100 Continue response
-      res.writeContinue();
-      // client will now send us the request body
-    }
-    const body = http.STATUS_CODES[200];
+    const msg = http.STATUS_CODES[200];
     res.writeHead(200, {
-      'Content-Length': body.length,
+      'Content-Length': msg.length,
       'Content-Type': 'text/plain'
     });
-    res.end(body);
     if (req.url !== '/favicon.ico') {
       let body;
-      let timeoutID = setTimeout(() => broadcast(req, body || 'timeout...'), 120000)
+      let timeoutID = setTimeout(() => broadcast(req, body || 'timeout...', () => res.end(msg)), 120000)
       req.on('data', (chunk) => {
         if (body == null) {
           body = []
@@ -71,26 +66,32 @@ app.use((req, res) => {
         if (chunk != null) {
           body.push(chunk)
         }
-        consoleLog('end', body.length)
+        consoleLog('end', body ? body.length : 0)
         if (timeoutID != null) { clearTimeout(timeoutID) }
-        broadcast(req, body)
+        broadcast(req, body, () => res.end(msg))
       });
-      
+    } else {
+      res.end(msg);
     }
   }
-});
+}
+
+const server = http.createServer(onRequest)
 
 wss = new WebSocket.Server({ server });
 
-server.listen(port, function() {
+server.listen(port, function () {
   var port = server.address().port
   console.info('[server] event: listening (port: %d)', port)
 })
 // listen for checkContinue events
-server.on('checkContinue', function(req, res) {
+server.on('checkContinue', function (req, res) {
   consoleLog("checkContinue")
-  req.checkContinue = true;
-  app(req, res); // call express directly to route the request
+  req.checkContinue = false;
+  broadcast(req, 'loading...')
+  // send 100 Continue response
+  res.writeContinue();
+  onRequest(req, res)
 })
 // Broadcast to all.
 wss.broadcast = function broadcast(data) {

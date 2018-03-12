@@ -9,28 +9,70 @@
 <body>
   <pre style="color: lightgrey;">-</pre>
   <script>
+    var startedAt = new Date()
+    function at() {
+      return '@' + Math.floor((new Date() - startedAt) / 1000) + 's'
+    }
+    function timeStamp() {
+      return (new Date()).toLocaleTimeString('fr-FR')
+    }
     function addToDom(req) {
       var el = document.createElement('div')
-      el.innerHTML = '<pre style="color: lightgrey;">' + (new Date()).toLocaleTimeString('fr-FR')  + '</pre>' +
+      el.innerHTML = '<pre style="color: lightgrey;">' + timeStamp() + ' - ' + at()  + '</pre>' +
         '<pre>' +
           req.method + ' ' + req.url +
         '</pre><pre>' +
           Object.keys(req.headers).map(n => n+':'+req.headers[n]).join('\n') +
-        '</pre><pre>' +
-          req.body.slice(0, 1024 * 10) +
+        (req.body ? '</pre><pre>' +
+          req.safeBody : '') +
         '</pre>'
-      document.body.insertBefore(el, document.body.firstChild)
+      document.body.insertBefore(el, document.body.firstElementChild)
     }
+    document.body.firstElementChild.innerText = timeStamp() + ' - start'
     var socket = new WebSocket(location.protocol.replace('http', 'ws')+ '//' + location.host + '/ws')
     window.echos = []
     socket.onmessage = function(m) {
       if (m.data) {
         try {
-          window.echos.last = JSON.parse(m.data)
+          var resp = JSON.parse(m.data)
+          window.echos.last = Object.create(null, Object.assign(Object.getOwnPropertyDescriptors(resp), {
+            safeBody: {
+              get() {
+                var maxLength = 1024 * 10
+                if (resp.body && resp.body.length > maxLength) {
+                  return resp.body.slice(0, maxLength) + '...'
+                } else {
+                  return resp.body
+                }
+              }
+            },
+            data: {
+              get() {
+                var contentType = resp.headers['Content-Type'] || resp.headers['content-type']
+                if (contentType === 'application/json') {
+                  try {
+                    return JSON.parse(resp.body)
+                  } catch(e) {
+                    return this.safeBody()
+                  }
+                } else if (contentType === 'application/xml' || contentType === 'text/xml') {
+                  try {
+                    var parser = new DOMParser();
+                    return parser.parseFromString(text, contentType);
+                  } catch(e) {
+                    return this.safeBody
+                  }
+                } else {
+                  return this.safeBody
+                }
+              }
+            }
+          }))
+          window.echos.last = window.echos.last
           window.echos.push(window.echos.last)
           addToDom(window.echos.last)
         } catch (e) {
-          console.log(m.data)
+          console.log(m.data.slice(0, 1024 * 100))
         }
       }
     }
