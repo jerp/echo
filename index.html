@@ -49,16 +49,16 @@
             data: {
               get() {
                 var contentType = resp.headers['Content-Type'] || resp.headers['content-type']
-                if (contentType === 'application/json') {
+                if (/json/.test(contentType)) {
                   try {
                     return JSON.parse(resp.body)
                   } catch(e) {
                     return this.safeBody()
                   }
-                } else if (contentType === 'application/xml' || contentType === 'text/xml') {
+                } else if (/xml/.test(contentType)) {
                   try {
                     var parser = new DOMParser();
-                    return parser.parseFromString(text, contentType);
+                    return parser.parseFromString(resp.body, contentType.replace(/;.*/, ''))
                   } catch(e) {
                     return this.safeBody
                   }
