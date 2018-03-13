@@ -35,7 +35,10 @@
       var parentEl = document.createElement('div')
       createPre(timeStamp() + ' - ' + at(), parentEl, {color: 'lightgrey'})
       createPre(req.method + ' ' + req.url, parentEl)
-      createPre(Object.keys(req.headers).map(n => n+':'+req.headers[n]).join('\n'), parentEl)
+      createPre(Object.keys(req.headers)
+        .filter(name => /^((content-type)|(accept)|(x-echo.*))$/i.test(name))
+        .map(n => n+':'+req.headers[n]).join('\n')
+      , parentEl)
       if (req.body != null) {
         createPre(req.safeBody, parentEl)
       }
