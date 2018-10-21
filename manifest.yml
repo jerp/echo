@@ -1,6 +1,7 @@
 ---
 applications:
-- name: echo
+- name: echo1
   path: .
-  buildpack: nodejs_buildpack
+  buildpacks:
+    - nodejs_buildpack
   memory: 128M

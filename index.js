@@ -1,8 +1,8 @@
 const http = require('http')
-const express = require('express');
 const WebSocket = require('ws');
 const fs = require('fs')
 const indexHtml = fs.readFileSync(__dirname + '/index.html').toString()
+const log = require("cf-nodejs-logging-support")
 
 const port = process.env.PORT || 8088
 // const app = express();
@@ -54,6 +54,7 @@ function onRequest(req, res) {
       'Content-Type': 'text/plain'
     });
     if (req.url !== '/favicon.ico') {
+      log.logNetwork(req, res)
       let body;
       let timeoutID = setTimeout(() => broadcast(req, body || 'timeout...', () => res.end(msg)), 120000)
       req.on('data', (chunk) => {
@@ -82,7 +83,7 @@ wss = new WebSocket.Server({ server });
 
 server.listen(port, function () {
   var port = server.address().port
-  console.info('[server] event: listening (port: %d)', port)
+  log.logMessage(`[server] event: listening (port: ${port})`)
 })
 // listen for checkContinue events
 server.on('checkContinue', function (req, res) {
